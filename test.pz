@@ -1,2 +1,3 @@
-v a: i = 5;
-s.print(a);
+v unEntierDuQ i = 420
+v monBooléen b = t
+p(monBooléen,unEntierDuQ)

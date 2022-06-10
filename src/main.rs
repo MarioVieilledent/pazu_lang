@@ -1,14 +1,16 @@
 use std::collections::HashMap;
 use std::fs;
 
-const LANG: &str = "Pazu";
+use regex::Regex;
+
 const LANG_EXTENTION: &str = "pz";
 
+#[derive(Debug)]
 enum Type {
-    i(isize),
-    u(u8),
-    c(char),
-    b(bool),
+    I(isize),
+    U(u8),
+    C(char),
+    B(bool),
 }
 
 struct Interpretor {
@@ -17,28 +19,35 @@ struct Interpretor {
 
 impl Interpretor {
     fn interpret(&mut self, code: &String) {
-        let instructions = code.split(";");
+        let instructions = code.split("\n");
         for (index, instr) in instructions.enumerate() {
-            self.interpretLine(index, instr);
+            match self.interpret_line(index, instr) {
+                Ok(_) => (),
+                Err(s) => println!("Erreur : {}", s),
+            };
         }
     }
 
-    fn interpretLine(&mut self, index: usize, instr: &str) -> Result<String, String> {
+    fn interpret_line(&mut self, index: usize, instr: &str) -> Result<String, String> {
         let words: Vec<&str> = instr.split(" ").collect::<Vec<&str>>();
         match check_syntax(&words) {
-            Ok(_) => match words[0] {
-                "v" => {
+            Ok(_) => match words[0].chars().next().unwrap() {
+                'v' => {
                     self.declare(
                         words[1],
-                        makeValue(words[1].chars().next().unwrap(), words[3])?,
+                        make_value(words[2].chars().next().unwrap(), words[4])?,
                     );
-                    return Ok(format!("Ok"));
+                    Ok(format!("Ok"))
+                }
+                'p' => {
+                    self.printer(get_params(words[0])?)?;
+                    Ok(format!("Ok"))
                 }
                 other => {
                     return Err(format!(
                         "Syntaxe \"{}\" non reconnue {}",
                         other,
-                        stackTrace(index)
+                        stack_trace(index)
                     ));
                 }
             },
@@ -49,21 +58,49 @@ impl Interpretor {
     fn declare(&mut self, name: &str, value: Type) {
         self.memory.insert(name.to_string(), value);
     }
+
+    fn printer(&self, words: Vec<&str>) -> Result<(), String> {
+        for param in words {
+            match self.memory.get(param) {
+                Some(v) => {
+                    match v {
+                        Type::I(i) => println!("{}", i),
+                        Type::U(u) => println!("{}", u),
+                        Type::C(c) => println!("{}", c),
+                        Type::B(b) => {
+                            if *b {
+                                println!("t");
+                            } else {
+                                println!("f");
+                            }
+                        }
+                    };
+                }
+                None => return Err(format!("Aucune variable {} n'existe en mémoire.", param)),
+            }
+        }
+        Ok(())
+    }
+
+    fn _display_memory(&self) {
+        for (key, value) in &self.memory {
+            println!("{}: {:?}", key, value);
+        }
+    }
 }
 
 fn main() {
     let mut interpretor = Interpretor {
         memory: HashMap::new(),
     };
-    println!("{}Lang", LANG);
     interpretor.interpret(&read_file("test.pz").unwrap());
 }
 
-fn check_syntax(instr: &Vec<&str>) -> Result<(), String> {
+fn check_syntax(_instr: &Vec<&str>) -> Result<(), String> {
     Ok(())
 }
 
-fn stackTrace(index: usize) -> String {
+fn stack_trace(index: usize) -> String {
     format!("ligne {}", index)
 }
 
@@ -78,14 +115,27 @@ fn read_file(file_name: &str) -> Result<String, String> {
     }
 }
 
-fn makeValue(t: char, v: &str) -> Result<Type, String> {
+fn get_params(instr: &str) -> Result<Vec<&str>, String> {
+    let re = Regex::new(r"\w*?\((.*?)\)").unwrap();
+    let cap = re.captures(instr);
+    match cap {
+        Some(c) => {
+            let str = c.get(1).map_or("", |m| m.as_str());
+            Ok(str.split(",").collect::<Vec<&str>>())
+        }
+        None => Err(format!("tkt")),
+    }
+}
+
+fn make_value(t: char, v: &str) -> Result<Type, String> {
+    let v = v.trim();
     match t {
-        'i' => Ok(Type::i(v.parse::<isize>().unwrap())),
-        'u' => Ok(Type::u(v.parse::<u8>().unwrap())),
-        'c' => Ok(Type::c(v.parse::<char>().unwrap())),
+        'i' => Ok(Type::I(v.parse::<isize>().unwrap())),
+        'u' => Ok(Type::U(v.parse::<u8>().unwrap())),
+        'c' => Ok(Type::C(v.parse::<char>().unwrap())),
         'b' => match v {
-            "t" => return Ok(Type::b(true)),
-            "f" => return Ok(Type::b(false)),
+            "t" => return Ok(Type::B(true)),
+            "f" => return Ok(Type::B(false)),
             v => {
                 return Err(format!(
                     "{} n'est pas un booléen, utiliser t pour true et f pour false.",

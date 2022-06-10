@@ -2,7 +2,7 @@
 
 ## Introduction
 
-## Mots clés reservés
+## Mots clés réservés
 
 |mot clé|signification|
 | --- | --- |
@@ -15,7 +15,8 @@
 |f|for|
 |i|if|
 |n|null|
-|s|standard functions|
+|p|print function|
+|s|scan function|
 |t|true|
 
 ## Variables
