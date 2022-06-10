@@ -16,18 +16,24 @@ struct Interpretor {
 }
 
 impl Interpretor {
-    fn interpretor(&mut self, code: &String) {
+    fn interpret(&mut self, code: &String) {
         let instructions = code.split(";");
         for (index, instr) in instructions.enumerate() {
-            self.interpret(index, instr);
+            self.interpretLine(index, instr);
         }
     }
 
-    fn interpret(&mut self, index: usize, instr: &str) -> Result<String, String> {
+    fn interpretLine(&mut self, index: usize, instr: &str) -> Result<String, String> {
         let words: Vec<&str> = instr.split(" ").collect::<Vec<&str>>();
-        if check_syntax(&words) {
-            match words[0] {
-                "v" => self.declare(words[1], enumify(words[3])),
+        match check_syntax(&words) {
+            Ok(_) => match words[0] {
+                "v" => {
+                    self.declare(
+                        words[1],
+                        makeValue(words[1].chars().next().unwrap(), words[3])?,
+                    );
+                    return Ok(format!("Ok"));
+                }
                 other => {
                     return Err(format!(
                         "Syntaxe \"{}\" non reconnue {}",
@@ -35,9 +41,9 @@ impl Interpretor {
                         stackTrace(index)
                     ));
                 }
-            }
+            },
+            Err(e) => Err(e),
         }
-        Ok(format!("Ok"))
     }
 
     fn declare(&mut self, name: &str, value: Type) {
@@ -50,11 +56,11 @@ fn main() {
         memory: HashMap::new(),
     };
     println!("{}Lang", LANG);
-    interpretor(&read_file("test.pz").unwrap());
+    interpretor.interpret(&read_file("test.pz").unwrap());
 }
 
-fn check_syntax(instr: &Vec<&str>) -> bool {
-    true
+fn check_syntax(instr: &Vec<&str>) -> Result<(), String> {
+    Ok(())
 }
 
 fn stackTrace(index: usize) -> String {
@@ -69,5 +75,24 @@ fn read_file(file_name: &str) -> Result<String, String> {
             "Seul les fichiers .{} peuvent être interprétés.",
             LANG_EXTENTION
         ))
+    }
+}
+
+fn makeValue(t: char, v: &str) -> Result<Type, String> {
+    match t {
+        'i' => Ok(Type::i(v.parse::<isize>().unwrap())),
+        'u' => Ok(Type::u(v.parse::<u8>().unwrap())),
+        'c' => Ok(Type::c(v.parse::<char>().unwrap())),
+        'b' => match v {
+            "t" => return Ok(Type::b(true)),
+            "f" => return Ok(Type::b(false)),
+            v => {
+                return Err(format!(
+                    "{} n'est pas un booléen, utiliser t pour true et f pour false.",
+                    v
+                ));
+            }
+        },
+        t => Err(format!("{} n'est pas un type.", t)),
     }
 }
