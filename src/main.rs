@@ -4,13 +4,16 @@ use std::fs;
 use regex::Regex;
 
 const LANG_EXTENTION: &str = "pz";
+const SEPARATOR: &str = ";";
 
 #[derive(Debug)]
 enum Type {
-    I(isize),
-    U(u8),
-    C(char),
     B(bool),
+    C(char),
+    F(f64),
+    I(isize),
+    S(String),
+    U(u8),
 }
 
 struct Interpretor {
@@ -19,7 +22,8 @@ struct Interpretor {
 
 impl Interpretor {
     fn interpret(&mut self, code: &String) {
-        let instructions = code.split("\n");
+        let code = code.replace("\n", "");
+        let instructions = code.split(SEPARATOR);
         for (index, instr) in instructions.enumerate() {
             match self.interpret_line(index, instr) {
                 Ok(_) => (),
@@ -31,15 +35,16 @@ impl Interpretor {
     fn interpret_line(&mut self, index: usize, instr: &str) -> Result<String, String> {
         let words: Vec<&str> = instr.split(" ").collect::<Vec<&str>>();
         match check_syntax(&words) {
-            Ok(_) => match words[0].chars().next().unwrap() {
-                'v' => {
-                    self.declare(
+            Ok(_) => match words[0] {
+                "v" => {
+                    self.declare_variable(
                         words[1],
                         make_value(words[2].chars().next().unwrap(), words[4])?,
                     );
                     Ok(format!("Ok"))
                 }
-                'p' => {
+                "f" => self.declare_function("test", "test"),
+                "p" => {
                     self.printer(get_params(words[0])?)?;
                     Ok(format!("Ok"))
                 }
@@ -55,8 +60,12 @@ impl Interpretor {
         }
     }
 
-    fn declare(&mut self, name: &str, value: Type) {
+    fn declare_variable(&mut self, name: &str, value: Type) {
         self.memory.insert(name.to_string(), value);
+    }
+
+    fn declare_function(&mut self, name: &str, content: &str) -> Result<String, String> {
+        Ok("test".to_owned())
     }
 
     fn printer(&self, words: Vec<&str>) -> Result<(), String> {
@@ -67,6 +76,8 @@ impl Interpretor {
                         Type::I(i) => println!("{}", i),
                         Type::U(u) => println!("{}", u),
                         Type::C(c) => println!("{}", c),
+                        Type::S(s) => println!("{}", s),
+                        Type::F(f) => println!("{}", f),
                         Type::B(b) => {
                             if *b {
                                 println!("t");
